@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crucigrama: "¡Diles que no me maten!" y "Luvina"</title>
+<style>
+  :root {
+    --bg: #f7f3ec;
+    --panel: #ffffff;
+    --ink: #2b2420;
+    --muted: #7a6f63;
+    --accent: #a6402c;
+    --accent-soft: #e9d9c9;
+    --cell-bg: #ffffff;
+    --cell-border: #cbb89f;
+    --cell-active: #f6e2c4;
+    --ok: #3f7d4a;
+    --bad: #b23b3b;
+    --block: #3a332d;
+    box-sizing: border-box;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #201b16;
+      --panel: #2b241d;
+      --ink: #f1e9df;
+      --muted: #b7a998;
+      --accent: #e08a5e;
+      --accent-soft: #4a3c2e;
+      --cell-bg: #3a3126;
+      --cell-border: #6b5a45;
+      --cell-active: #5a4630;
+      --ok: #6fbf7a;
+      --bad: #e07070;
+      --block: #120f0c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #201b16;
+    --panel: #2b241d;
+    --ink: #f1e9df;
+    --muted: #b7a998;
+    --accent: #e08a5e;
+    --accent-soft: #4a3c2e;
+    --cell-bg: #3a3126;
+    --cell-border: #6b5a45;
+    --cell-active: #5a4630;
+    --ok: #6fbf7a;
+    --bad: #e07070;
+    --block: #120f0c;
+  }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+  h1 {
+    font-size: clamp(1.1rem, 3vw, 1.6rem);
+    text-align: center;
+    margin: 0 0 4px;
+    color: var(--accent);
+  }
+  .sub {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+  }
+  .name-field {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .name-field label {
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .name-field input {
+    font-family: inherit;
+    font-size: 0.95rem;
+    padding: 6px 10px;
+    border: 1px solid var(--cell-border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--ink);
+    min-width: 220px;
+  }
+  .name-field input:focus { outline: 2px solid var(--accent); }
+  .board {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  @media (min-width: 680px) {
+    .board { flex-direction: row; align-items: flex-start; }
+    .grid-area { flex: 0 0 auto; }
+    .clues-area { flex: 1 1 auto; }
+  }
+  .grid-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(28px, 40px));
+    grid-template-rows: repeat(10, minmax(28px, 40px));
+    gap: 2px;
+    background: var(--cell-border);
+    border: 2px solid var(--cell-border);
+    width: max-content;
+    margin: 0 auto;
+  }
+  .cell {
+    position: relative;
+    background: var(--cell-bg);
+  }
+  .cell.block { background: var(--block); }
+  .cell input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+    font-family: inherit;
+    color: var(--ink);
+    text-transform: uppercase;
+    padding: 0;
+  }
+  .cell input:focus { outline: none; background: var(--cell-active); }
+  .cell.correct input { color: var(--ok); font-weight: bold; }
+  .cell.wrong input { color: var(--bad); }
+  .num {
+    position: absolute;
+    top: 1px;
+    left: 2px;
+    font-size: 0.5rem;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .clues-area h2 {
+    font-size: 1rem;
+    color: var(--accent);
+    border-bottom: 1px solid var(--accent-soft);
+    padding-bottom: 4px;
+    margin-top: 0;
+  }
+  .clue-list { list-style: none; padding: 0; margin: 0 0 20px; }
+  .clue-list li {
+    padding: 6px 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.92rem;
+    line-height: 1.35;
+  }
+  .clue-list li:hover, .clue-list li.active { background: var(--accent-soft); }
+  .clue-list b { color: var(--accent); margin-right: 4px; }
+  .controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  button {
+    font-family: inherit;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  #status {
+    margin-top: 14px;
+    font-size: 0.95rem;
+    min-height: 1.3em;
+    color: var(--ok);
+    font-weight: bold;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Crucigrama: El Llano en Llamas</h1>
+  <div class="sub">"¡Diles que no me maten!" y "Luvina" — Juan Rulfo</div>
+  <div class="name-field">
+    <label for="studentName">Nombre del alumno:</label>
+    <input type="text" id="studentName" placeholder="Escribe tu nombre completo" autocomplete="name">
+  </div>
+  <div class="board">
+    <div class="grid-area">
+      <div class="grid-scroll"><div id="grid"></div></div>
+      <div class="controls">
+        <button id="checkBtn">Revisar</button>
+        <button id="resetBtn" class="secondary">Reiniciar</button>
+      </div>
+      <div id="status"></div>
+    </div>
+    <div class="clues-area">
+      <h2>Verticales</h2>
+      <ul class="clue-list" id="downClues"></ul>
+      <h2>Horizontales</h2>
+      <ul class="clue-list" id="acrossClues"></ul>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  const ROWS = 10, COLS = 8;
+  const words = [
+    {num:1, dir:'down',   row:0, col:4, answer:'CORONEL',  clue:'Hijo de don Lupe Terreros; ordena el fusilamiento de Juvencio.'},
+    {num:2, dir:'down',   row:0, col:6, answer:'JUSTINO',   clue:'Hijo de Juvencio que va a rogar por la vida de su padre.'},
+    {num:3, dir:'down',   row:1, col:5, answer:'MEZCAL',    clue:'Bebida que ofrecen a los viajeros en la tienda de Luvina.'},
+    {num:4, dir:'down',   row:3, col:1, answer:'LUVINA',    clue:'Pueblo fantasma azotado por el viento; da título al segundo cuento.'},
+    {num:5, dir:'across', row:4, col:0, answer:'JUVENCIO',  clue:'Anciano que mató a don Lupe Terreros y es condenado a morir.'},
+    {num:6, dir:'down',   row:4, col:2, answer:'VIENTO',    clue:'Fuerza que domina y atormenta sin descanso a los habitantes de Luvina.'}
+  ];
+
+  // build cell map
+  const cellMap = {}; // "r,c" -> {letter, numbers:[wordIndexes]}
+  words.forEach((w, wi) => {
+    for (let i = 0; i < w.answer.length; i++) {
+      const r = w.dir === 'down' ? w.row + i : w.row;
+      const c = w.dir === 'across' ? w.col + i : w.col;
+      const key = r + ',' + c;
+      if (!cellMap[key]) cellMap[key] = { letter: w.answer[i], words: [] };
+      cellMap[key].words.push({wi, idx: i});
+    }
+  });
+
+  const grid = document.getElementById('grid');
+  const inputs = {}; // key -> input element
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const key = r + ',' + c;
+      const cellDiv = document.createElement('div');
+      if (!cellMap[key]) {
+        cellDiv.className = 'cell block';
+      } else {
+        cellDiv.className = 'cell';
+        const startWord = words.find(w => w.row === r && w.col === c);
+        if (startWord) {
+          const num = document.createElement('span');
+          num.className = 'num';
+          num.textContent = startWord.num;
+          cellDiv.appendChild(num);
+        }
+        const inp = document.createElement('input');
+        inp.maxLength = 1;
+        inp.dataset.key = key;
+        inp.addEventListener('input', (e) => onType(e, r, c));
+        inp.addEventListener('keydown', (e) => onKeyDown(e, r, c));
+        inp.addEventListener('focus', () => highlightWord(r, c));
+        cellDiv.appendChild(inp);
+        inputs[key] = inp;
+      }
+      grid.appendChild(cellDiv);
+    }
+  }
+
+  function nextCell(r, c, dir) {
+    return dir === 'across' ? [r, c+1] : [r+1, c];
+  }
+  function prevCell(r, c, dir) {
+    return dir === 'across' ? [r, c-1] : [r-1, c];
+  }
+
+  let currentDir = 'across';
+
+  function highlightWord(r, c) {
+    document.querySelectorAll('.clue-list li').forEach(li => li.classList.remove('active'));
+    const key = r + ',' + c;
+    const info = cellMap[key];
+    if (!info) return;
+    // prefer the direction already in use if this cell belongs to both
+    let match = info.words.find(w => words[w.wi].dir === currentDir) || info.words[0];
+    currentDir = words[match.wi].dir;
+    const li = document.querySelector('li[data-idx="' + match.wi + '"]');
+    if (li) li.classList.add('active');
+  }
+
+  function onType(e, r, c) {
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-ZÑ]/g, '');
+    const key = r + ',' + c;
+    const cellDiv = e.target.parentElement;
+    cellDiv.classList.remove('correct', 'wrong');
+    if (e.target.value) {
+      const [nr, nc] = nextCell(r, c, currentDir);
+      const nkey = nr + ',' + nc;
+      if (inputs[nkey]) inputs[nkey].focus();
+    }
+  }
+
+  function onKeyDown(e, r, c) {
+    if (e.key === 'Backspace' && !e.target.value) {
+      const [pr, pc] = prevCell(r, c, currentDir);
+      const pkey = pr + ',' + pc;
+      if (inputs[pkey]) inputs[pkey].focus();
+    } else if (e.key === 'ArrowRight') { const k=(r)+','+(c+1); if(inputs[k]) inputs[k].focus(); }
+    else if (e.key === 'ArrowLeft') { const k=(r)+','+(c-1); if(inputs[k]) inputs[k].focus(); }
+    else if (e.key === 'ArrowDown') { const k=(r+1)+','+(c); if(inputs[k]) inputs[k].focus(); }
+    else if (e.key === 'ArrowUp') { const k=(r-1)+','+(c); if(inputs[k]) inputs[k].focus(); }
+  }
+
+  function renderClues() {
+    const downUl = document.getElementById('downClues');
+    const acrossUl = document.getElementById('acrossClues');
+    words.forEach((w, wi) => {
+      const li = document.createElement('li');
+      li.dataset.idx = wi;
+      li.innerHTML = '<b>' + w.num + '.</b>' + w.clue + ' (' + w.answer.length + ' letras)';
+      li.addEventListener('click', () => {
+        currentDir = w.dir;
+        const key = w.row + ',' + w.col;
+        if (inputs[key]) inputs[key].focus();
+      });
+      (w.dir === 'down' ? downUl : acrossUl).appendChild(li);
+    });
+  }
+  renderClues();
+
+  function checkAll(reveal) {
+    let allCorrect = true;
+    let anyFilled = false;
+    Object.keys(cellMap).forEach(key => {
+      const inp = inputs[key];
+      const cellDiv = inp.parentElement;
+      const correctLetter = cellMap[key].letter;
+      cellDiv.classList.remove('correct', 'wrong');
+      if (reveal) {
+        inp.value = correctLetter;
+        cellDiv.classList.add('correct');
+        return;
+      }
+      if (inp.value) {
+        anyFilled = true;
+        if (inp.value === correctLetter) {
+          cellDiv.classList.add('correct');
+        } else {
+          cellDiv.classList.add('wrong');
+          allCorrect = false;
+        }
+      } else {
+        allCorrect = false;
+      }
+    });
+    const status = document.getElementById('status');
+    if (reveal) {
+      status.textContent = 'Solución revelada.';
+      status.style.color = 'var(--muted)';
+    } else if (!anyFilled) {
+      status.textContent = 'Completa algunas casillas primero.';
+      status.style.color = 'var(--muted)';
+    } else if (allCorrect) {
+      const name = document.getElementById('studentName').value.trim();
+      status.textContent = name ? ('¡Muy bien, ' + name + '! Crucigrama completo y correcto.') : '¡Muy bien! Crucigrama completo y correcto.';
+      status.style.color = 'var(--ok)';
+    } else {
+      status.textContent = 'Hay letras incorrectas o casillas vacías — sigue intentando.';
+      status.style.color = 'var(--bad)';
+    }
+  }
+
+  document.getElementById('checkBtn').addEventListener('click', () => checkAll(false));
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    Object.values(inputs).forEach(inp => {
+      inp.value = '';
+      inp.parentElement.classList.remove('correct', 'wrong');
+    });
+    document.getElementById('status').textContent = '';
+  });
+})();
+</script>
+</body>
+</html>
